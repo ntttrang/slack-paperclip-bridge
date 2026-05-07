@@ -13,12 +13,14 @@ import (
 var inflight sync.WaitGroup
 
 func main() {
+	log.Println("slack-paperclip bridge starting up")
 	config = LoadConfig()
 	initSlack()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/slack/events", handleSlackEvents)
 	mux.HandleFunc("/paperclip/webhook", handlePaperclipWebhook)
+	log.Println("routes registered: /slack/events, /paperclip/webhook")
 
 	srv := &http.Server{
 		Addr:              config.ListenAddr,
@@ -30,7 +32,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Println("Slack-Paperclip bridge listening on", config.ListenAddr)
+		log.Println("slack-paperclip bridge listening on", config.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
@@ -44,6 +46,7 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Println("server shutdown error:", err)
 	}
+	log.Println("http server stopped; waiting for in-flight handlers")
 	inflight.Wait()
 	log.Println("drained; exiting")
 }

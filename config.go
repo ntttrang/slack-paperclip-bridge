@@ -16,6 +16,7 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
+	log.Println("loading config from environment")
 	cfg := &Config{
 		SlackBotToken:          os.Getenv("SLACK_BOT_TOKEN"),
 		SlackSigningSecret:     os.Getenv("SLACK_SIGNING_SECRET"),
@@ -47,5 +48,6 @@ func LoadConfig() *Config {
 	if len(missing) > 0 {
 		log.Fatalf("missing required env vars: %v", missing)
 	}
+	log.Printf("config loaded: listen_addr=%s paperclip_base_url=%s intake_agent_id=%s", cfg.ListenAddr, cfg.PaperclipBaseURL, cfg.IntakeAgentID)
 	return cfg
 }
