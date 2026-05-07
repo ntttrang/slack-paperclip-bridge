@@ -17,11 +17,14 @@ The service reads configuration from environment variables (see `.env.example`):
 | Variable | Required | Description |
 | --- | --- | --- |
 | `SLACK_BOT_TOKEN` | yes | Slack bot user OAuth token (`xoxb-...`). |
-| `SLACK_SIGNING_SECRET` | no | Slack signing secret (currently unused; signature verification is disabled in demo). |
+| `SLACK_SIGNING_SECRET` | yes | Slack signing secret. Used to verify `X-Slack-Signature` on every event. |
 | `PAPERCLIP_BASE_URL` | yes | Base URL of the Paperclip API. |
 | `PAPERCLIP_API_KEY` | yes | Bearer token for the Paperclip API. |
+| `PAPERCLIP_WEBHOOK_SECRET` | yes | Shared secret used to verify `X-Paperclip-Signature` (`sha256=<hex hmac>` of the raw body). |
 | `INTAKE_AGENT_ID` | yes | Paperclip agent ID that incoming Slack issues are assigned to. |
 | `LISTEN_ADDR` | no | HTTP listen address. Defaults to `:8080`. |
+
+The bridge fails fast at startup if any required variable is missing.
 
 Copy `.env.example` to `.env` and fill in the values, then export them into your shell before running.
 
@@ -42,7 +45,10 @@ The server logs `Slack-Paperclip bridge listening on <addr>` on startup.
 
 ## Notes
 
-- Slack request signature verification is disabled in this demo (`OptionNoVerifyToken`). Enable it before running in production.
+- Slack requests are verified via `SLACK_SIGNING_SECRET` using HMAC-SHA256 (`X-Slack-Signature` + `X-Slack-Request-Timestamp`). Slack retries (`X-Slack-Retry-Num` set) are acked without re-processing to avoid duplicate Paperclip issues.
+- Paperclip webhooks must include `X-Paperclip-Signature: sha256=<hex hmac>` computed over the raw request body using `PAPERCLIP_WEBHOOK_SECRET`. Unsigned requests are rejected with 401.
+- Replies are pinned to the `slack_channel` / `slack_thread_ts` recorded in the issue's `metadata`; the agent-supplied `slack_reply.channel`/`thread_ts` is only used as a fallback.
+- Webhooks are deduped by `issue_id` (in-memory) to absorb Paperclip retries.
 - The Paperclip create-issue endpoint path (`/api/issues`) is a placeholder — adjust it to match your Paperclip deployment.
 
 ## License
